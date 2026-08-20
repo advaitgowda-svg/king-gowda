@@ -238,12 +238,12 @@
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const GROUND_Y = 350; // Shifted up to center players on the drawn court
+        const GROUND_Y = 350; 
         const GRAVITY = 0.5;
 
-        // Hoops Setup (Adjusted Y to match new GROUND_Y)
-        const hoopRight = { id: 1, x: 820, y: 210, backboardX: 840, dir: 1, rimRadius: 15, scoreRadius: 10 };
-        const hoopLeft = { id: 2, x: 80, y: 210, backboardX: 60, dir: -1, rimRadius: 15, scoreRadius: 10 };
+        // Hoops Setup (Made slightly shorter, removed manual backboardX to use scale logic)
+        const hoopRight = { id: 1, x: 820, y: 235, dir: 1, rimRadius: 18, scoreRadius: 12 };
+        const hoopLeft = { id: 2, x: 80, y: 235, dir: -1, rimRadius: 18, scoreRadius: 12 };
 
         const keys = { a: false, d: false, w: false, space: false, s: false, left: false, right: false, up: false, enter: false, shift: false };
         window.addEventListener('keydown', e => {
@@ -298,7 +298,7 @@
                 this.vy = 0;
                 this.radius = 16; 
                 this.stats = stats;
-                this.isP2 = isPlayer2; // P2 maps to Arrow keys, P1 maps to WASD
+                this.isP2 = isPlayer2; 
                 this.hasBall = false;
                 this.score = 0;
                 this.facing = isPlayer2 ? -1 : 1;
@@ -381,8 +381,10 @@
                 
                 const dx = this.targetHoop.x - this.x;
                 const boost = (this.stats.shoot / 100);
-                ball.vx = dx * 0.035 * (0.9 + boost * 0.2);
-                ball.vy = -12.5 + (Math.abs(dx)*0.003);
+                
+                // Adjusted shooting mechanics: shorter distance, slower speed
+                ball.vx = dx * 0.022 * (0.8 + boost * 0.2); 
+                ball.vy = -10.5 + (Math.abs(dx) * 0.0015);
             }
 
             dunk(ball) {
@@ -515,7 +517,7 @@
         class Ball {
             constructor() {
                 this.reset();
-                this.radius = 8;
+                this.radius = 12; // Made ball larger
                 this.bounceLoss = 0.7;
             }
 
@@ -585,11 +587,14 @@
 
                 const hoops = [hoopLeft, hoopRight];
                 hoops.forEach(hoop => {
-                    if (hoop.dir === 1 && this.x + this.radius >= hoop.backboardX && this.y >= hoop.y - 70 && this.y <= hoop.y + 10) {
-                        this.x = hoop.backboardX - this.radius;
+                    const bbX = hoop.dir === 1 ? hoop.x + 15 : hoop.x - 15;
+                    
+                    // Backboard collision
+                    if (hoop.dir === 1 && this.x + this.radius >= bbX && this.y >= hoop.y - 60 && this.y <= hoop.y + 10) {
+                        this.x = bbX - this.radius;
                         this.vx *= -0.8;
-                    } else if (hoop.dir === -1 && this.x - this.radius <= hoop.backboardX && this.y >= hoop.y - 70 && this.y <= hoop.y + 10) {
-                        this.x = hoop.backboardX + this.radius;
+                    } else if (hoop.dir === -1 && this.x - this.radius <= bbX && this.y >= hoop.y - 60 && this.y <= hoop.y + 10) {
+                        this.x = bbX + this.radius;
                         this.vx *= -0.8;
                     }
 
@@ -610,12 +615,16 @@
             draw() {
                 ctx.save();
                 ctx.translate(this.x, this.y);
+                
+                // Larger Ball Drawing
                 ctx.fillStyle = '#e67e22';
-                ctx.fillRect(-8, -6, 16, 12);
-                ctx.fillRect(-6, -8, 12, 16);
+                ctx.fillRect(-12, -8, 24, 16);
+                ctx.fillRect(-8, -12, 16, 24);
+                
                 ctx.fillStyle = '#000';
-                ctx.fillRect(-8, -1, 16, 2); 
-                ctx.fillRect(-1, -8, 2, 16); 
+                ctx.fillRect(-12, -1, 24, 2); 
+                ctx.fillRect(-1, -12, 2, 24); 
+                
                 ctx.restore();
             }
         }
@@ -652,40 +661,32 @@
         }
 
         function renderCourt() {
-            // Black background top area
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, 100);
             
-            // Clean Top Bleachers banner (replaces the random static)
             ctx.fillStyle = '#111';
             ctx.fillRect(0, 100, canvas.width, 40);
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 22px Courier';
             ctx.fillText('KONAMI', canvas.width / 2 - 40, 125);
 
-            // Double Dribble Court Blue Border Top
             ctx.fillStyle = '#1c289c'; 
             ctx.fillRect(0, 140, canvas.width, 40);
 
-            // Main Wood Floor
             ctx.fillStyle = '#e4a552'; 
             ctx.fillRect(0, 180, canvas.width, canvas.height - 180);
 
-            // Horizontal Wood Planks
             ctx.fillStyle = '#d39341';
             for(let y = 180; y < canvas.height; y += 15) {
                 ctx.fillRect(0, y, canvas.width, 2);
             }
 
-            // Court Blue Border Bottom
             ctx.fillStyle = '#1c289c'; 
             ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
 
-            // Center White Half-Court Line
             ctx.fillStyle = '#fff';
             ctx.fillRect(canvas.width / 2 - 3, 180, 6, canvas.height - 180);
 
-            // Center Blue Circle
             ctx.beginPath();
             ctx.arc(canvas.width / 2, GROUND_Y, 70, 0, Math.PI * 2);
             ctx.fillStyle = '#1c289c';
@@ -694,27 +695,22 @@
             ctx.strokeStyle = '#fff';
             ctx.stroke();
 
-            // Left Blue Paint (Key)
             ctx.fillStyle = '#1c289c';
             ctx.fillRect(0, GROUND_Y - 90, 180, 180);
             ctx.strokeRect(0, GROUND_Y - 90, 180, 180);
             
-            // Left Free Throw Circle
             ctx.beginPath();
             ctx.arc(180, GROUND_Y, 50, -Math.PI/2, Math.PI/2);
             ctx.stroke();
 
-            // Right Blue Paint (Key)
             ctx.fillStyle = '#1c289c';
             ctx.fillRect(canvas.width - 180, GROUND_Y - 90, 180, 180);
             ctx.strokeRect(canvas.width - 180, GROUND_Y - 90, 180, 180);
 
-            // Right Free Throw Circle
             ctx.beginPath();
             ctx.arc(canvas.width - 180, GROUND_Y, 50, Math.PI/2, -Math.PI/2);
             ctx.stroke();
             
-            // 3 Point Lines
             ctx.beginPath();
             ctx.arc(0, GROUND_Y, 280, -Math.PI/4, Math.PI/4);
             ctx.stroke();
@@ -725,22 +721,47 @@
         }
 
         function drawSingleHoop(hoop) {
-            ctx.fillStyle = '#888';
-            const poleX = hoop.dir === 1 ? hoop.backboardX + 10 : hoop.backboardX - 20;
-            ctx.fillRect(poleX, hoop.y - 40, 10, GROUND_Y - hoop.y + 40);
+            ctx.save();
+            ctx.translate(hoop.x, hoop.y);
             
-            ctx.fillStyle = '#ecf0f1';
-            ctx.fillRect(hoop.backboardX, hoop.y - 70, 10, 80);
-            ctx.fillStyle = '#c0392b';
-            ctx.fillRect(hoop.backboardX, hoop.y - 30, 10, 25); 
+            // Using scaling fixes all pixel alignment for the left side instantly
+            ctx.scale(hoop.dir, 1);
+            
+            // Post / Support (L-Shape)
+            ctx.fillStyle = '#5c637a';
+            ctx.fillRect(30, -30, 8, GROUND_Y - hoop.y + 30);
+            ctx.fillRect(20, -30, 10, 8); 
+            
+            // Backboard
+            ctx.fillStyle = '#c5cbe1';
+            ctx.fillRect(-15, -60, 40, 50);
+            
+            // Orange Square
+            ctx.strokeStyle = '#e67e22';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(-5, -50, 20, 25);
+            
+            // Rim
+            ctx.fillStyle = '#8b93a8';
+            ctx.fillRect(-18, 0, 36, 4);
+            
+            // Net (Pixel checkboard pattern)
+            ctx.fillStyle = '#d1d5e6';
+            
+            // Row 1
+            ctx.fillRect(-14, 4, 4, 4); ctx.fillRect(-6, 4, 4, 4); 
+            ctx.fillRect(2, 4, 4, 4); ctx.fillRect(10, 4, 4, 4);
+            // Row 2
+            ctx.fillRect(-10, 8, 4, 4); ctx.fillRect(-2, 8, 4, 4); 
+            ctx.fillRect(6, 8, 4, 4);
+            // Row 3
+            ctx.fillRect(-14, 12, 4, 4); ctx.fillRect(-6, 12, 4, 4); 
+            ctx.fillRect(2, 12, 4, 4); ctx.fillRect(10, 12, 4, 4);
+            // Row 4
+            ctx.fillRect(-10, 16, 4, 4); ctx.fillRect(-2, 16, 4, 4); 
+            ctx.fillRect(6, 16, 4, 4);
 
-            ctx.fillStyle = '#d35400';
-            ctx.fillRect(hoop.x - hoop.rimRadius, hoop.y, hoop.rimRadius * 2, 6);
-
-            ctx.fillStyle = '#ecf0f1';
-            ctx.fillRect(hoop.x - hoop.rimRadius + 2, hoop.y + 6, 4, 15);
-            ctx.fillRect(hoop.x + hoop.rimRadius - 6, hoop.y + 6, 4, 15);
-            ctx.fillRect(hoop.x - hoop.rimRadius + 6, hoop.y + 12, 18, 4);
+            ctx.restore();
         }
 
         function renderHoops() {
