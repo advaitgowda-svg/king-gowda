@@ -3,795 +3,683 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>8-Bit 2-Player NBA Legends</title>
+    <title>8-Bit Hoops</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
-        body { background: #111; color: #fff; text-align: center; overflow: hidden; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background: #111; color: #fff; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            min-height: 100vh; overflow: hidden; 
+            font-family: 'Press Start 2P', Courier, monospace;
+            user-select: none;
+        }
+
+        /* --- TITLE SCREEN --- */
+        #title-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #4b3282 0%, #8b67a9 50%, #f4a28b 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 100;
+        }
+        .pixel-cloud {
+            position: absolute; background: white; width: 60px; height: 20px;
+        }
+        .pixel-cloud::before { content: ''; position: absolute; top: -10px; left: 10px; width: 40px; height: 10px; background: white; }
+        .pixel-cloud::after { content: ''; position: absolute; top: -20px; left: 20px; width: 20px; height: 10px; background: white; }
         
+        .title-text {
+            font-size: 3rem; color: #f1c40f; text-shadow: 4px 4px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+            margin-bottom: 60px; text-align: center; line-height: 1.5;
+        }
+        
+        .menu-options { list-style: none; font-size: 1.2rem; color: #fff; text-shadow: 2px 2px 0 #000; }
+        .menu-options li { margin: 20px 0; cursor: pointer; display: flex; align-items: center; }
+        .menu-options li::before {
+            content: '▶ '; color: transparent; margin-right: 10px; text-shadow: none;
+        }
+        .menu-options li:hover::before { color: #000; text-shadow: 2px 2px 0px #fff; }
+
+        .ground-blocks {
+            position: absolute; bottom: 0; width: 100%; height: 80px;
+            background: #8b5a2b; border-top: 15px solid #2ecc71;
+            background-image: linear-gradient(45deg, #704721 25%, transparent 25%, transparent 75%, #704721 75%, #704721), linear-gradient(45deg, #704721 25%, transparent 25%, transparent 75%, #704721 75%, #704721);
+            background-size: 20px 20px; background-position: 0 0, 10px 10px;
+        }
+
+        /* --- CHARACTER SELECT --- */
         #selection-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background: #222;
-            padding: 20px;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; padding: 20px; height: 100%; position: absolute; top: 0; left: 0;
+            background: #222; z-index: 90;
         }
         
-        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #f39c12; text-shadow: 2px 2px 0px #d35400; }
-        .instructions { color: #aaa; margin-bottom: 20px; font-weight: bold; }
-
-        .legend-grid {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-            max-width: 1000px;
-            margin-bottom: 25px;
+        h1 { font-size: 1.5rem; margin-bottom: 20px; color: #f39c12; text-shadow: 2px 2px 0px #000; text-align: center; }
+        
+        .multiplayer-menu {
+            display: flex; gap: 20px; margin-bottom: 20px; background: #111; padding: 15px; border: 4px solid #444;
         }
+        .multiplayer-menu button { padding: 10px; font-size: 0.7rem; background: #3498db; color: white; border: 4px solid #2980b9; cursor: pointer; }
+        .multiplayer-menu input { padding: 10px; font-size: 0.7rem; border: 4px solid #555; background: #000; color: #fff; width: 150px; }
 
+        #room-status { margin-bottom: 10px; color: #f1c40f; font-size: 0.7rem; text-align: center; line-height: 1.5; }
+        .instructions { color: #aaa; margin-bottom: 15px; font-size: 0.7rem; }
+
+        .legend-grid { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 900px; margin-bottom: 20px; }
+
+        /* Updated Card CSS */
         .player-card {
-            background: #000;
-            border: 4px solid #444;
-            width: 180px;
-            padding: 15px;
-            cursor: pointer;
-            transition: all 0.2s;
-            image-rendering: pixelated;
+            background: #87a988; border: 6px solid #ccc; outline: 2px solid #555;
+            border-radius: 8px; width: 140px; padding: 8px; cursor: pointer;
+            transition: transform 0.1s; image-rendering: pixelated; opacity: 0.5; pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; position: relative;
         }
+        .player-card.active { opacity: 1; pointer-events: auto; }
+        .player-card:hover { transform: translateY(-5px); background: #96bb97; }
+        .player-card.p1-selected { border-color: #3498db; outline-color: #2980b9; }
+        .player-card.p2-selected { border-color: #e74c3c; outline-color: #c0392b; }
 
-        .player-card.p1-selected { border-color: #3498db; box-shadow: 0 0 15px #3498db; }
-        .player-card.p2-selected { border-color: #e74c3c; box-shadow: 0 0 15px #e74c3c; }
-        .player-card.both-selected { border-color: #9b59b6; box-shadow: 0 0 15px #9b59b6; }
-
-        .avatar {
-            width: 60px;
-            height: 60px;
-            margin: 0 auto 10px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #fff;
-            border: 4px solid #fff;
+        .card-header {
+            background: #eee; color: #000; font-size: 0.5rem; width: 100%; text-align: center; 
+            padding: 4px; border: 2px solid #999; margin-bottom: 5px;
         }
-
-        .player-name { font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; color: #fff; }
-        .player-team { font-size: 0.8rem; color: #aaa; margin-bottom: 12px; }
-
-        .stat-bar { width: 100%; font-size: 0.75rem; text-align: left; margin-top: 4px; }
-        .stat-label { display: flex; justify-content: space-between; margin-bottom: 2px; }
-        .bar-bg { width: 100%; background: #333; height: 8px; border: 2px solid #555; }
-        .bar-fill { height: 100%; background: #f39c12; }
-
-        #start-btn {
-            padding: 12px 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            background: #e67e22;
-            color: white;
-            border: 4px solid #d35400;
-            cursor: pointer;
-            text-transform: uppercase;
+        .card-name {
+            background: #eee; color: #000; font-size: 0.55rem; width: 100%; text-align: center; 
+            padding: 6px 2px; border: 2px solid #999; margin-top: auto; line-height: 1.2;
         }
-        #start-btn:hover { background: #d35400; }
+        .card-canvas { margin: 5px 0; width: 64px; height: 64px; }
 
-        #game-container {
-            display: none;
-            position: relative;
-            width: 900px;
-            height: 500px;
-            margin: 20px auto;
-            border: 6px solid #444;
-            background: #000;
-        }
+        #start-local-btn { padding: 15px 30px; background: #2ecc71; border: 4px solid #27ae60; color: white; cursor: pointer; font-size: 0.8rem; display: none; margin-top: 10px;}
+        #start-local-btn:hover { background: #27ae60; }
 
-        canvas { background: #1a1a1a; display: block; image-rendering: pixelated; }
+        /* --- GAME UI --- */
+        #game-container { display: none; position: relative; width: 900px; height: 500px; background: #000; box-shadow: 0px 10px 30px rgba(0,0,0,0.8); z-index: 10;}
+        canvas { display: block; image-rendering: pixelated; }
 
         #scoreboard {
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 30px;
-            background: #000;
-            padding: 8px 25px;
-            border: 4px solid #444;
-            font-size: 1.5rem;
-            font-weight: bold;
-            z-index: 10;
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 40px;
+            background: rgba(0,0,0,0.8); padding: 10px 25px; border: 4px solid #444; font-size: 1rem; z-index: 10;
         }
-
-        .controls-hint {
-            margin-top: 10px;
-            color: #ccc;
-            font-size: 0.9rem;
-            display: flex;
-            justify-content: space-around;
-            width: 900px;
-            margin: 10px auto;
-        }
-        .controls-hint span { background: #222; padding: 10px; border: 2px solid #444; }
+        .controls-hint { margin-top: 15px; color: #aaa; font-size: 0.6rem; display: none; justify-content: center; width: 900px; line-height: 1.6; gap: 15px; }
+        .controls-hint span { background: #222; padding: 10px; border: 4px solid #444; }
 
         #win-screen {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
-            color: #f1c40f;
-            font-size: 3rem;
-            font-weight: bold;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 20;
-            text-transform: uppercase;
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); color: #f1c40f; font-size: 2rem; flex-direction: column; justify-content: center; align-items: center; z-index: 20; text-shadow: 4px 4px 0px #000;
         }
-        #win-screen button {
-            margin-top: 20px;
-            padding: 10px 30px;
-            font-size: 1.2rem;
-            background: #fff;
-            color: #000;
-            border: 4px solid #f1c40f;
-            cursor: pointer;
-            font-weight: bold;
-        }
+        #win-screen button { margin-top: 30px; padding: 15px 30px; background: #fff; border: 4px solid #f1c40f; cursor: pointer; font-size: 1rem;}
     </style>
 </head>
 <body>
 
-    <div id="selection-screen">
-        <h1>8-Bit NBA Legends</h1>
-        <div class="instructions" id="instruction-text">Player 1: Select your Legend</div>
-        <div class="legend-grid" id="legendGrid"></div>
-        <button id="start-btn" onclick="startGame()" style="display:none;">START MATCH</button>
+    <!-- TITLE SCREEN -->
+    <div id="title-screen">
+        <div class="pixel-cloud" style="top: 15%; left: 20%;"></div>
+        <div class="pixel-cloud" style="top: 25%; left: 70%;"></div>
+        <div class="pixel-cloud" style="top: 10%; left: 50%; transform: scale(0.7);"></div>
+        
+        <div class="title-text">8-BIT<br>HOOPS</div>
+        <ul class="menu-options">
+            <li onclick="goToSelect('local')">LOCAL MATCH</li>
+            <li onclick="goToSelect('online')">ONLINE MATCH</li>
+        </ul>
+        <div class="ground-blocks"></div>
     </div>
 
+    <!-- SELECTION SCREEN -->
+    <div id="selection-screen">
+        <h1>SELECT CHARACTER</h1>
+        
+        <div class="multiplayer-menu" id="mp-menu" style="display: none;">
+            <div><button onclick="hostGame()">CREATE ROOM</button></div>
+            <div style="color: #666; display: flex; align-items: center;">- OR -</div>
+            <div>
+                <input type="text" id="join-code" placeholder="Room Code">
+                <button onclick="joinGame()" style="background: #e67e22; border-color: #d35400;">JOIN</button>
+            </div>
+        </div>
+
+        <div id="room-status"></div>
+        <div class="instructions" id="instruction-text">PLAYER 1: SELECT YOUR LEGEND</div>
+        
+        <div class="legend-grid" id="legendGrid"></div>
+        <button id="start-local-btn" onclick="startLocalMatch()">START MATCH</button>
+    </div>
+
+    <!-- GAME CONTAINER -->
     <div id="game-container">
         <div id="scoreboard">
             <span id="p1-score-display" style="color: #3498db;">P1: 0</span>
-            <span style="color: #f1c40f;">FIRST TO 10</span>
+            <span style="color: #f1c40f;">RACE TO 10</span>
             <span id="p2-score-display" style="color: #e74c3c;">P2: 0</span>
         </div>
         <canvas id="gameCanvas" width="900" height="500"></canvas>
         <div id="win-screen">
-            <div id="win-text">PLAYER 1 WINS!</div>
-            <button onclick="location.reload()">PLAY AGAIN</button>
+            <div id="win-text">PLAYER WINS!</div>
+            <button onclick="location.reload()">MAIN MENU</button>
         </div>
     </div>
 
-    <div class="controls-hint" id="controlsHint" style="display:none;">
-        <span style="color:#3498db;"><b>P1:</b> W,A,D (Move/Jump) | SPACE (Shoot/Dunk) | S (Steal/Block)</span>
-        <span style="color:#e74c3c;"><b>P2:</b> Arrows (Move/Jump) | ENTER (Shoot/Dunk) | SHIFT (Steal/Block)</span>
+    <div class="controls-hint" id="controlsHint">
+        <span style="color:#3498db;"><b>P1:</b> W/A/S/D | SPACE (Shoot) | S (Block) | Q (Skill)</span>
+        <span style="color:#e74c3c;"><b>P2:</b> ARROWS | ENTER (Shoot) | DOWN (Block) | SHIFT (Skill)</span>
     </div>
 
     <script>
         const LEGENDS = [
-            { id: 'jordan', name: 'M. Jordan', team: 'Bulls', color: '#ce1141', trim: '#000', speed: 88, jump: 95, shoot: 92, num: '23' },
-            { id: 'kobe', name: 'K. Bryant', team: 'Lakers', color: '#fdb927', trim: '#552583', speed: 86, jump: 90, shoot: 94, num: '24' },
-            { id: 'bird', name: 'L. Bird', team: 'Celtics', color: '#007A33', trim: '#fff', speed: 75, jump: 70, shoot: 99, num: '33' },
-            { id: 'curry', name: 'S. Curry', team: 'Warriors', color: '#1d428a', trim: '#ffc72c', speed: 85, jump: 78, shoot: 99, num: '30' },
-            { id: 'shaq', name: 'S. O\'Neal', team: 'Magic', color: '#0077c0', trim: '#000', speed: 70, jump: 85, shoot: 72, num: '32' }
+            { id: 'jordan', name: 'JORDAN', color: '#ce1141', trim: '#000', speed: 88, jump: 95, shoot: 92, num: '23', skillName: 'Airtime' },
+            { id: 'kobe', name: 'BRYANT', color: '#fdb927', trim: '#552583', speed: 86, jump: 90, shoot: 94, num: '24', skillName: 'Mamba' },
+            { id: 'lebron', name: 'JAMES', color: '#98002e', trim: '#f9a01b', speed: 90, jump: 96, shoot: 85, num: '6', skillName: 'Chase' },
+            { id: 'curry', name: 'CURRY', color: '#1d428a', trim: '#ffc72c', speed: 85, jump: 78, shoot: 99, num: '30', skillName: 'Splash' },
+            { id: 'shaq', name: 'O\'NEAL', color: '#0077c0', trim: '#000', speed: 70, jump: 85, shoot: 72, num: '32', skillName: 'Diesel' },
+            { id: 'bird', name: 'BIRD', color: '#007A33', trim: '#fff', speed: 75, jump: 70, shoot: 98, num: '33', skillName: 'Legend' },
+            { id: 'magic', name: 'JOHNSON', color: '#552583', trim: '#FDB927', speed: 85, jump: 80, shoot: 85, num: '32', skillName: 'Showtime' },
+            { id: 'iverson', name: 'IVERSON', color: '#006bb6', trim: '#FFFFFF', speed: 95, jump: 85, shoot: 88, num: '3', skillName: 'Answer' }
         ];
 
-        let p1Legend = null;
-        let p2Legend = null;
-        let scoreAnimations = [];
+        let p1Legend = null, p2Legend = null;
+        let peer = null, conn = null;
+        let isHost = true, isMultiplayer = false, myPlayerNum = 1;
+        let mode = 'local';
+
+        function goToSelect(selectedMode) {
+            mode = selectedMode;
+            document.getElementById('title-screen').style.display = 'none';
+            document.getElementById('selection-screen').style.display = 'flex';
+            
+            if (mode === 'online') {
+                isMultiplayer = true;
+                document.getElementById('mp-menu').style.display = 'flex';
+                document.getElementById('room-status').innerText = 'WAITING TO CREATE OR JOIN A ROOM...';
+            } else {
+                isMultiplayer = false;
+                document.getElementById('start-local-btn').style.display = 'block';
+            }
+            renderCards(mode === 'local');
+        }
 
         const grid = document.getElementById('legendGrid');
-        
-        function renderCards() {
+
+        function drawSpriteDummy(ctx, stats) {
+            const skin = '#a66835', shoeColor = stats.trim, jersey = stats.color;
+            ctx.fillStyle = skin; ctx.fillRect(-6, -30, 4, 30); ctx.fillStyle = shoeColor; ctx.fillRect(-8, 0, 8, 6);
+            ctx.fillStyle = skin; ctx.fillRect(2, -30, 4, 30); ctx.fillStyle = shoeColor; ctx.fillRect(0, 0, 8, 6);
+            ctx.fillStyle = jersey; ctx.fillRect(-8, -45, 16, 15); ctx.fillStyle = stats.trim; ctx.fillRect(-8, -35, 16, 5); 
+            ctx.fillStyle = jersey; ctx.fillRect(-9, -70, 18, 25);
+            ctx.fillStyle = stats.trim; ctx.font = '8px "Press Start 2P"'; ctx.fillText(stats.num, stats.num.length > 1 ? -9 : -4, -50);
+            ctx.fillStyle = skin; ctx.fillRect(-7, -85, 14, 15); ctx.fillStyle = '#4a2f1d'; ctx.fillRect(-8, -90, 16, 6);
+            ctx.fillStyle = '#fff'; ctx.fillRect(-7, -84, 14, 4); ctx.fillStyle = '#d35400'; ctx.fillRect(-5, -79, 10, 4);
+            ctx.fillStyle = skin; ctx.fillRect(-8, -65, 4, 20); ctx.fillRect(4, -65, 4, 20);
+        }
+
+        function renderCards(isActive = false) {
             grid.innerHTML = '';
             LEGENDS.forEach((legend) => {
                 const card = document.createElement('div');
-                card.className = 'player-card';
-                if (p1Legend === legend && p2Legend === legend) card.classList.add('both-selected');
-                else if (p1Legend === legend) card.classList.add('p1-selected');
-                else if (p2Legend === legend) card.classList.add('p2-selected');
+                card.className = `player-card ${isActive || !isMultiplayer ? 'active' : ''}`;
+                if (p1Legend === legend) card.classList.add('p1-selected');
+                if (p2Legend === legend) card.classList.add('p2-selected');
 
-                card.onclick = () => selectPlayer(legend);
+                card.onclick = () => {
+                    if (!isActive && isMultiplayer) return;
+                    if (!isMultiplayer) {
+                        if (!p1Legend) { p1Legend = legend; document.getElementById('instruction-text').innerText = "PLAYER 2: SELECT YOUR LEGEND"; }
+                        else if (!p2Legend && p1Legend !== legend) p2Legend = legend;
+                        else { p1Legend = legend; p2Legend = null; document.getElementById('instruction-text').innerText = "PLAYER 2: SELECT YOUR LEGEND"; }
+                        renderCards(true);
+                    } else {
+                        if (myPlayerNum === 1) { p1Legend = legend; if(conn && conn.open) conn.send({ type: 'select', player: 1, legendId: legend.id }); } 
+                        else { p2Legend = legend; if(conn && conn.open) conn.send({ type: 'select', player: 2, legendId: legend.id }); }
+                        renderCards(true); checkStartReady();
+                    }
+                };
+
+                // Card Layout resembling 2nd image
                 card.innerHTML = `
-                    <div class="avatar" style="background: ${legend.color}; color: ${legend.trim}; border-color: ${legend.trim};">${legend.num}</div>
-                    <div class="player-name">${legend.name}</div>
-                    <div class="player-team">${legend.team}</div>
-                    <div class="stat-bar">
-                        <div class="stat-label"><span>Speed</span><span>${legend.speed}</span></div>
-                        <div class="bar-bg"><div class="bar-fill" style="width:${legend.speed}%"></div></div>
-                    </div>
-                    <div class="stat-bar">
-                        <div class="stat-label"><span>Jump</span><span>${legend.jump}</span></div>
-                        <div class="bar-bg"><div class="bar-fill" style="width:${legend.jump}%"></div></div>
-                    </div>
-                    <div class="stat-bar">
-                        <div class="stat-label"><span>Shooting</span><span>${legend.shoot}</span></div>
-                        <div class="bar-bg"><div class="bar-fill" style="width:${legend.shoot}%"></div></div>
-                    </div>
+                    <div class="card-header">CHARACTER</div>
+                    <canvas id="card-canvas-${legend.id}" class="card-canvas" width="64" height="64"></canvas>
+                    <div class="card-name">${legend.name}</div>
                 `;
                 grid.appendChild(card);
+
+                // Draw Sprite onto the card
+                const cCtx = document.getElementById(`card-canvas-${legend.id}`).getContext('2d');
+                cCtx.imageSmoothingEnabled = false;
+                cCtx.translate(32, 60); // Center bottom
+                cCtx.scale(0.65, 0.65); // Scale appropriately
+                drawSpriteDummy(cCtx, legend);
             });
         }
 
-        function selectPlayer(legend) {
-            if (!p1Legend) {
-                p1Legend = legend;
-                document.getElementById('instruction-text').innerText = "Player 2: Select your Legend";
-                document.getElementById('instruction-text').style.color = "#e74c3c";
-            } else if (!p2Legend) {
-                p2Legend = legend;
-                document.getElementById('instruction-text').innerText = "Ready to Play!";
-                document.getElementById('instruction-text').style.color = "#2ecc71";
-                document.getElementById('start-btn').style.display = "block";
-            } else {
-                p1Legend = legend;
-                p2Legend = null;
-                document.getElementById('instruction-text').innerText = "Player 2: Select your Legend";
-                document.getElementById('instruction-text').style.color = "#e74c3c";
-                document.getElementById('start-btn').style.display = "none";
+        // --- MULTIPLAYER LOBBY LOGIC ---
+        function generateRoomCode() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
+        function hostGame() { 
+            const roomCode = generateRoomCode();
+            document.getElementById('room-status').innerText = `CREATING ROOM...`;
+            peer = new Peer(roomCode);
+            peer.on('open', (id) => {
+                document.getElementById('room-status').innerHTML = `ROOM CODE: <span style="color:#fff; background:#e74c3c; padding:5px;">${id}</span> <br> Waiting for Player 2...`;
+                isHost = true; myPlayerNum = 1;
+                p1Legend = null; p2Legend = null; renderCards(true);
+            });
+            peer.on('connection', (connection) => { conn = connection; setupConnection(); });
+        }
+        function joinGame() { 
+            const code = document.getElementById('join-code').value.toUpperCase().trim();
+            if(!code) return alert("Enter a room code!");
+            document.getElementById('room-status').innerText = `CONNECTING...`;
+            peer = new Peer();
+            peer.on('open', (id) => {
+                conn = peer.connect(code);
+                conn.on('open', () => {
+                    document.getElementById('room-status').innerText = `CONNECTED TO ROOM: ${code}`;
+                    isHost = false; myPlayerNum = 2;
+                    p1Legend = null; p2Legend = null; renderCards(true);
+                    document.getElementById('instruction-text').innerText = "PLAYER 2: SELECT YOUR LEGEND"; setupConnection();
+                });
+                conn.on('error', err => alert("Connection failed: " + err));
+            });
+        }
+        function setupConnection() {
+            conn.on('data', (data) => {
+                if(data.type === 'select') {
+                    const legend = LEGENDS.find(l => l.id === data.legendId);
+                    if(data.player === 1) p1Legend = legend; if(data.player === 2) p2Legend = legend;
+                    renderCards(true); checkStartReady();
+                } else if (data.type === 'start') { startGame();
+                } else if (data.type === 'state' && !isHost) { syncState(data.state);
+                } else if (data.type === 'input' && isHost) { p2Keys = data.keys; }
+            });
+        }
+        function checkStartReady() {
+            if(p1Legend && p2Legend) {
+                document.getElementById('instruction-text').innerText = "BOTH PLAYERS READY! STARTING...";
+                setTimeout(() => { if (isHost && conn && conn.open) { conn.send({ type: 'start' }); startGame(); } }, 1000);
             }
-            renderCards();
+        }
+        function startLocalMatch() {
+            if (!p1Legend || !p2Legend) return alert("Select two players first!");
+            isHost = true; startGame();
         }
 
-        renderCards();
-
+        // --- GAME LOGIC ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const GROUND_Y = 350; 
-        const GRAVITY = 0.5;
+        const GROUND_Y = 350; const GRAVITY = 0.5;
+        const hoopRight = { id: 1, x: 820, y: 255, dir: 1, rimRadius: 18, scoreRadius: 16 };
+        const hoopLeft = { id: 2, x: 80, y: 255, dir: -1, rimRadius: 18, scoreRadius: 16 };
 
-        // Hoops Setup (Made slightly shorter, removed manual backboardX to use scale logic)
-        const hoopRight = { id: 1, x: 820, y: 235, dir: 1, rimRadius: 18, scoreRadius: 12 };
-        const hoopLeft = { id: 2, x: 80, y: 235, dir: -1, rimRadius: 18, scoreRadius: 12 };
+        let p1Keys = { left: false, right: false, up: false, shoot: false, block: false, skill: false };
+        let p2Keys = { left: false, right: false, up: false, shoot: false, block: false, skill: false };
+        let clientKeys = { left: false, right: false, up: false, shoot: false, block: false, skill: false }; 
 
-        const keys = { a: false, d: false, w: false, space: false, s: false, left: false, right: false, up: false, enter: false, shift: false };
         window.addEventListener('keydown', e => {
-            if (e.code === 'KeyA') keys.a = true;
-            if (e.code === 'KeyD') keys.d = true;
-            if (e.code === 'KeyW') keys.w = true;
-            if (e.code === 'Space') keys.space = true;
-            if (e.code === 'KeyS') keys.s = true;
-            if (e.code === 'ArrowLeft') keys.left = true;
-            if (e.code === 'ArrowRight') keys.right = true;
-            if (e.code === 'ArrowUp') keys.up = true;
-            if (e.code === 'Enter') keys.enter = true;
-            if (e.code === 'ShiftRight' || e.code === 'ShiftLeft') keys.shift = true;
+            if(e.code === 'KeyA') p1Keys.left = true;
+            if(e.code === 'KeyD') p1Keys.right = true;
+            if(e.code === 'KeyW') { p1Keys.up = true; e.preventDefault(); }
+            if(e.code === 'Space') { p1Keys.shoot = true; e.preventDefault(); }
+            if(e.code === 'KeyS') p1Keys.block = true;
+            if(e.code === 'KeyQ') p1Keys.skill = true;
+
+            if(e.code === 'ArrowLeft') p2Keys.left = true;
+            if(e.code === 'ArrowRight') p2Keys.right = true;
+            if(e.code === 'ArrowUp') { p2Keys.up = true; e.preventDefault(); }
+            if(e.code === 'Enter') { p2Keys.shoot = true; e.preventDefault(); }
+            if(e.code === 'ArrowDown') p2Keys.block = true;
+            if(e.code === 'ShiftRight' || e.code === 'ShiftLeft') p2Keys.skill = true;
+            updateOnlineKeys();
         });
         window.addEventListener('keyup', e => {
-            if (e.code === 'KeyA') keys.a = false;
-            if (e.code === 'KeyD') keys.d = false;
-            if (e.code === 'KeyW') keys.w = false;
-            if (e.code === 'Space') keys.space = false;
-            if (e.code === 'KeyS') keys.s = false;
-            if (e.code === 'ArrowLeft') keys.left = false;
-            if (e.code === 'ArrowRight') keys.right = false;
-            if (e.code === 'ArrowUp') keys.up = false;
-            if (e.code === 'Enter') keys.enter = false;
-            if (e.code === 'ShiftRight' || e.code === 'ShiftLeft') keys.shift = false;
-        });
+            if(e.code === 'KeyA') p1Keys.left = false;
+            if(e.code === 'KeyD') p1Keys.right = false;
+            if(e.code === 'KeyW') p1Keys.up = false;
+            if(e.code === 'Space') p1Keys.shoot = false;
+            if(e.code === 'KeyS') p1Keys.block = false;
+            if(e.code === 'KeyQ') p1Keys.skill = false;
 
+            if(e.code === 'ArrowLeft') p2Keys.left = false;
+            if(e.code === 'ArrowRight') p2Keys.right = false;
+            if(e.code === 'ArrowUp') p2Keys.up = false;
+            if(e.code === 'Enter') p2Keys.shoot = false;
+            if(e.code === 'ArrowDown') p2Keys.block = false;
+            if(e.code === 'ShiftRight' || e.code === 'ShiftLeft') p2Keys.skill = false;
+            updateOnlineKeys();
+        });
+        function updateOnlineKeys() {
+            if (!isMultiplayer || isHost) return;
+            clientKeys = { left: p1Keys.left || p2Keys.left, right: p1Keys.right || p2Keys.right, up: p1Keys.up || p2Keys.up, shoot: p1Keys.shoot || p2Keys.shoot, block: p1Keys.block || p2Keys.block, skill: p1Keys.skill || p2Keys.skill };
+            if (conn && conn.open) conn.send({ type: 'input', keys: clientKeys });
+        }
+
+        let scoreAnimations = [];
         class ScoreAnim {
-            constructor(x, y, text, color) {
-                this.x = x;
-                this.y = y;
-                this.text = text;
-                this.color = color;
-                this.timer = 0;
-            }
-            update() {
-                this.y -= 1;
-                this.timer++;
-            }
+            constructor(x, y, text, color) { this.x = x; this.y = y; this.text = text; this.color = color; this.timer = 0; }
+            update() { this.y -= 1; this.timer++; }
             draw() {
-                ctx.fillStyle = this.color;
-                ctx.font = 'bold 24px Courier';
-                ctx.fillText(this.text, this.x - 40, this.y);
+                ctx.fillStyle = this.color; ctx.font = '12px "Press Start 2P"'; ctx.shadowColor = "#000"; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
+                ctx.fillText(this.text, this.x - (this.text.length * 4), this.y); ctx.shadowColor = "transparent";
             }
         }
 
         class Player {
             constructor(x, stats, isPlayer2 = false) {
-                this.x = x;
-                this.y = GROUND_Y;
-                this.vx = 0;
-                this.vy = 0;
-                this.radius = 16; 
-                this.stats = stats;
-                this.isP2 = isPlayer2; 
-                this.hasBall = false;
-                this.score = 0;
-                this.facing = isPlayer2 ? -1 : 1;
-                this.targetHoop = isPlayer2 ? hoopLeft : hoopRight; 
-                
-                this.animState = 'idle';
-                this.animTimer = 0;
-                this.actionCooldown = 0;
+                this.x = x; this.y = GROUND_Y; this.vx = 0; this.vy = 0; this.radius = 16; 
+                this.stats = stats; this.isP2 = isPlayer2; this.hasBall = false; this.score = 0;
+                this.targetHoop = isPlayer2 ? hoopLeft : hoopRight; this.facing = isPlayer2 ? -1 : 1;
+                this.animState = 'idle'; this.animTimer = 0; this.isChargingShot = false;
+                this.isDunking = false; this.meterValue = 0; this.grabCooldown = 0; this.stealCooldown = 0;
+                this.skillUsed = false; this.activeSkill = null; this.stunTimer = 0; this.speedBoost = 0;
+                this.threePointActive = false;
             }
 
-            update(ball, opponent) {
-                const speed = (this.stats.speed / 100) * 5.5;
-                const jumpPower = (this.stats.jump / 100) * 11 + 4.5;
+            update(ball, opponent, currentKeys) {
+                if (this.stunTimer > 0) { this.stunTimer--; this.animState = 'idle'; return; }
+                if (this.speedBoost > 0) this.speedBoost--;
+
+                const speed = ((this.stats.speed / 100) * 5.5) + (this.speedBoost > 0 ? 3 : 0);
+                const jumpPower = (this.stats.jump / 100) * 4.5 + 6; 
                 let isWalking = false;
 
-                if (this.actionCooldown > 0) this.actionCooldown--;
+                if (this.grabCooldown > 0) this.grabCooldown--;
+                if (this.stealCooldown > 0) this.stealCooldown--;
 
-                const moveLeft = !this.isP2 ? keys.a : keys.left;
-                const moveRight = !this.isP2 ? keys.d : keys.right;
-                const jumpBtn = !this.isP2 ? keys.w : keys.up;
-                const shootBtn = !this.isP2 ? keys.space : keys.enter;
-                const actionBtn = !this.isP2 ? keys.s : keys.shift;
-
-                if (this.animState !== 'shoot' && this.animState !== 'dunk' && this.animState !== 'steal' && this.animState !== 'block') {
-                    this.animState = 'idle';
+                if (currentKeys.skill && !this.skillUsed) {
+                    this.skillUsed = true;
+                    scoreAnimations.push(new ScoreAnim(this.x, this.y - 120, this.stats.skillName, "#9b59b6"));
+                    if (this.stats.id === 'lebron') this.speedBoost = 180;
+                    if (this.stats.id === 'iverson') { this.speedBoost = 120; if(Math.hypot(this.x - opponent.x, this.y - opponent.y) < 150) opponent.stunTimer = 90; }
+                    if (this.stats.id === 'shaq' && Math.hypot(this.x - opponent.x, this.y - opponent.y) < 100) opponent.stunTimer = 90;
+                    if (this.stats.id === 'magic' && Math.hypot(this.x - opponent.x, this.y - opponent.y) < 80) { opponent.hasBall = false; this.hasBall = true; ball.isHeld = true; ball.lastTouch = this; }
+                    if (this.stats.id === 'curry') this.threePointActive = true;
+                    this.activeSkill = this.stats.id;
                 }
 
-                if (moveLeft) { this.vx = -speed; this.facing = -1; isWalking = true; }
-                else if (moveRight) { this.vx = speed; this.facing = 1; isWalking = true; }
-                else { this.vx *= 0.8; }
+                if (this.animState !== 'shoot' && this.animState !== 'dunk' && this.animState !== 'block') this.animState = 'idle';
+
+                if (currentKeys.left && !this.isChargingShot && !this.isDunking) { this.vx = -speed; this.facing = -1; isWalking = true; }
+                else if (currentKeys.right && !this.isChargingShot && !this.isDunking) { this.vx = speed; this.facing = 1; isWalking = true; }
+                else if (!this.isDunking) { this.vx *= 0.8; }
                 
                 if (isWalking && this.animState === 'idle') this.animState = 'walk';
+                if (currentKeys.up && this.y === GROUND_Y && !this.isChargingShot && !this.isDunking) this.vy = -jumpPower;
 
-                if (jumpBtn && this.y === GROUND_Y) this.vy = -jumpPower;
+                if (currentKeys.block && !this.hasBall) {
+                    this.animState = 'block'; if (this.y === GROUND_Y) this.vy = -jumpPower * 0.9;
+                }
 
-                if (shootBtn && this.hasBall && this.actionCooldown === 0) {
-                    const distToHoop = Math.abs(this.targetHoop.x - this.x);
-                    if (distToHoop < 100 && this.y < GROUND_Y - 20) {
-                        this.dunk(ball);
-                    } else {
-                        this.shoot(ball);
+                const distToHoop = Math.abs(this.x - this.targetHoop.x);
+                const dunkRange = (this.activeSkill === 'jordan') ? 220 : 120;
+                const inRestrictedArea = distToHoop < dunkRange; 
+
+                if (this.hasBall) {
+                    this.facing = this.targetHoop.x > this.x ? 1 : -1;
+                    if (currentKeys.shoot) {
+                        if (inRestrictedArea && !this.isDunking && !this.isChargingShot) {
+                            this.isDunking = true; this.animState = 'dunk';
+                            this.vy = -jumpPower * 1.1; this.vx = (this.targetHoop.x - this.x) * 0.05; 
+                        } else if (!inRestrictedArea && !this.isDunking) {
+                            this.isChargingShot = true;
+                            let distMod = Math.max(1, distToHoop / 250); 
+                            let meterSpeed = (6.5 - (this.stats.shoot * 0.04)) * distMod;
+                            if (this.activeSkill === 'bird') meterSpeed *= 0.5;
+                            this.meterValue += meterSpeed; 
+                            if (this.meterValue > 100) this.meterValue = 100;
+                        }
+                    } else if (!currentKeys.shoot && this.isChargingShot) {
+                        this.releaseShot(ball);
                     }
-                    this.actionCooldown = 30; 
+                } else {
+                    this.isChargingShot = false; this.meterValue = 0;
                 }
 
-                if (actionBtn && !this.hasBall && this.actionCooldown === 0) {
-                    if (this.y === GROUND_Y) {
-                        this.attemptSteal(opponent, ball);
-                    } else {
-                        this.attemptBlock(ball);
-                    }
-                    this.actionCooldown = 25;
-                }
+                if (this.isDunking) {
+                    const rimDistX = Math.abs(this.x - this.targetHoop.x);
+                    const handY = this.y - 71; const rimDistY = Math.abs(handY - this.targetHoop.y);
 
-                this.x += this.vx;
-                this.y += this.vy;
-                this.vy += GRAVITY;
-
-                if (this.y >= GROUND_Y) { 
-                    this.y = GROUND_Y; 
-                    this.vy = 0; 
-                    if (this.animState === 'dunk' || this.animState === 'shoot' || this.animState === 'block') {
-                        this.animState = 'idle';
+                    if (rimDistX < 45 && rimDistY < 55) { 
+                        this.isDunking = false; this.hasBall = false; ball.isHeld = false; this.grabCooldown = 30;
+                        ball.x = this.targetHoop.x; ball.y = this.targetHoop.y - 10; ball.vx = 0; ball.vy = 6; 
+                        ball.scoringHoop = this.targetHoop; ball.lastTouch = this; ball.canScore = true;
+                        ball.pointsWorth = 2;
+                        scoreAnimations.push(new ScoreAnim(this.x, this.y - 80, "SLAM!", "#e67e22"));
+                    } else if (this.y >= GROUND_Y) {
+                        this.isDunking = false;
+                        if (this.hasBall) { this.hasBall = false; ball.isHeld = false; ball.vx = this.facing * -2; ball.vy = -4; this.grabCooldown = 30; }
                     }
                 }
-                if (this.x < 20) this.x = 20;
-                if (this.x > canvas.width - 20) this.x = canvas.width - 20;
 
-                if (this.animState === 'walk' || this.animState === 'idle') this.animTimer += 0.3;
-                else this.animTimer += 1; 
-
-                if (this.animState === 'steal' && this.animTimer > 15) this.animState = 'idle';
-            }
-
-            shoot(ball) {
-                this.animState = 'shoot';
-                this.animTimer = 0;
-                this.hasBall = false;
-                ball.isHeld = false;
-                
-                const dx = this.targetHoop.x - this.x;
-                const boost = (this.stats.shoot / 100);
-                
-                // Adjusted shooting mechanics: shorter distance, slower speed
-                ball.vx = dx * 0.022 * (0.8 + boost * 0.2); 
-                ball.vy = -10.5 + (Math.abs(dx) * 0.0015);
-            }
-
-            dunk(ball) {
-                this.animState = 'dunk';
-                this.animTimer = 0;
-                this.hasBall = false;
-                ball.isHeld = false;
-                
-                this.vx = (this.targetHoop.x - this.x - (this.facing*20)) * 0.1;
-                this.vy = -4; 
-                
-                ball.x = this.targetHoop.x;
-                ball.y = this.targetHoop.y - 15;
-                ball.vx = 0;
-                ball.vy = 8; 
-            }
-
-            attemptSteal(opponent, ball) {
-                this.animState = 'steal';
-                this.animTimer = 0;
-                
-                const dist = Math.abs(opponent.x - this.x);
-                if (opponent.hasBall && dist < 50 && this.facing === (opponent.x > this.x ? 1 : -1)) {
-                    opponent.hasBall = false;
-                    this.hasBall = true;
-                    ball.isHeld = true;
-                    ball.lastTouch = this;
+                if (!this.hasBall && opponent.hasBall && this.stealCooldown === 0 && opponent.stealCooldown === 0) {
+                    if (Math.hypot(opponent.x - this.x, opponent.y - this.y) < this.radius + opponent.radius + 5) {
+                        opponent.hasBall = false; opponent.isChargingShot = false; opponent.isDunking = false; opponent.meterValue = 0;
+                        this.hasBall = true; ball.isHeld = true; ball.lastTouch = this; ball.canScore = false; 
+                        this.stealCooldown = 60; opponent.stealCooldown = 60;
+                    }
                 }
+
+                this.x += this.vx; this.y += this.vy; this.vy += GRAVITY;
+                if (this.y >= GROUND_Y) { this.y = GROUND_Y; this.vy = 0; if (this.animState === 'shoot' || this.animState === 'dunk' || this.animState === 'block') this.animState = 'idle'; }
+                if (this.x < 95) this.x = 95; if (this.x > 805) this.x = 805;
+                if (this.animState === 'walk' || this.animState === 'idle') this.animTimer += 0.3; else this.animTimer += 1; 
             }
 
-            attemptBlock(ball) {
-                this.animState = 'block';
-                this.animTimer = 0;
+            releaseShot(ball) {
+                this.isChargingShot = false; this.animState = 'shoot'; this.animTimer = 0; this.hasBall = false;
+                ball.isHeld = false; ball.canScore = true; this.grabCooldown = 45; 
+                ball.pointsWorth = this.threePointActive ? 3 : 2;
+                this.threePointActive = false; 
                 
-                if (!ball.isHeld) {
-                    const distToBallX = Math.abs(ball.x - this.x);
-                    const distToBallY = Math.abs(ball.y - (this.y - 60)); 
+                const distToHoop = Math.abs(this.x - this.targetHoop.x);
+                const isPastHalfCourt = distToHoop > 400; // Half-court penalty
+                
+                const greenCenter = 80; 
+                let greenWidth = Math.max(4, (this.stats.shoot - 50) * 0.25); 
+                if (this.activeSkill === 'kobe') greenWidth = 30; 
+                
+                // Penalize half court shots
+                if (isPastHalfCourt) {
+                    greenWidth = 1; // Almost impossible to green
+                    this.meterValue *= 0.8; // Mess up their timing
+                }
+
+                let isGreen = this.meterValue >= greenCenter - greenWidth / 2 && this.meterValue <= greenCenter + greenWidth / 2;
+                let dx = this.targetHoop.x - this.x, dy = (this.targetHoop.y - 10) - (this.y - 71);
+                let T = 45; let idealVx = dx / T, idealVy = (dy - 0.5 * GRAVITY * T * T) / T;
+
+                if (isGreen && !isPastHalfCourt) {
+                    ball.vx = idealVx; ball.vy = idealVy;
+                    scoreAnimations.push(new ScoreAnim(this.x, this.y - 95, "PERFECT!", "#2ecc71"));
+                } else {
+                    let error = (this.meterValue - greenCenter) * 0.05;
+                    if (isPastHalfCourt) error += (Math.random() > 0.5 ? 2 : -2); // Huge random error for deep shots
                     
-                    if (distToBallX < 40 && distToBallY < 40 && ball.vy < 0) {
-                        ball.vx = (this.facing) * 5;
-                        ball.vy = 5; 
-                    }
+                    ball.vx = idealVx + error + ((Math.random() - 0.5) * (100 - this.stats.shoot) * 0.02);
+                    ball.vy = idealVy + Math.abs(error) * 0.6;
                 }
+                this.meterValue = 0;
+                if (this.activeSkill === 'kobe' || this.activeSkill === 'bird') this.activeSkill = null; 
             }
 
             draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.scale(this.facing, 1);
-
-                const skin = '#a66835'; 
-                const shoeColor = this.stats.trim;
-                const jersey = this.stats.color;
-
-                let legOffset1 = 0, legOffset2 = 0;
-                let armState = 'normal'; 
-                let torsoOffset = 0;
-
-                if (this.animState === 'walk' && this.y === GROUND_Y) {
-                    legOffset1 = Math.sin(this.animTimer) > 0 ? 5 : -5;
-                    legOffset2 = Math.sin(this.animTimer) > 0 ? -5 : 5;
-                } else if (this.y < GROUND_Y) { 
-                    legOffset1 = -4; legOffset2 = 4;
-                    if (this.animState === 'shoot') armState = 'high';
-                    if (this.animState === 'block') armState = 'high';
-                    if (this.animState === 'dunk') { armState = 'slam'; torsoOffset = 10; }
-                }
-
-                if (this.animState === 'steal') {
-                    armState = 'forward';
-                    torsoOffset = 5;
-                }
-
-                ctx.translate(torsoOffset, 0); 
-
-                ctx.fillStyle = skin;
-                ctx.fillRect(-6 + legOffset2, -30, 4, 30);
-                ctx.fillStyle = shoeColor;
-                ctx.fillRect(-8 + legOffset2, 0, 8, 6);
-
-                ctx.fillStyle = skin;
-                ctx.fillRect(2 + legOffset1, -30, 4, 30);
-                ctx.fillStyle = shoeColor;
-                ctx.fillRect(0 + legOffset1, 0, 8, 6);
-
-                ctx.fillStyle = jersey;
-                ctx.fillRect(-8, -45, 16, 15);
-                ctx.fillStyle = this.stats.trim;
-                ctx.fillRect(-8, -35, 16, 5); 
-
-                ctx.fillStyle = jersey;
-                ctx.fillRect(-9, -70, 18, 25);
-                ctx.fillStyle = this.stats.trim;
-                ctx.font = 'bold 10px Courier';
-                ctx.fillText(this.stats.num, -6, -55);
-
-                ctx.fillStyle = skin;
-                if (armState === 'high') ctx.fillRect(-2, -90, 4, 25);
-                else if (armState === 'slam') ctx.fillRect(10, -50, 20, 5);
-                else ctx.fillRect(4, -65, 4, 20);
-
-                ctx.fillStyle = skin;
-                ctx.fillRect(-7, -85, 14, 15);
-                ctx.fillStyle = '#4a2f1d'; 
-                ctx.fillRect(-8, -90, 16, 6);
-                ctx.fillRect(-9, -86, 4, 8); 
-
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(-7, -84, 14, 4);
-                ctx.fillStyle = '#d35400';
-                ctx.fillRect(-5, -79, 10, 4);
-
-                ctx.fillStyle = skin;
-                if (armState === 'high') {
-                    ctx.fillRect(0, -95, 5, 25); 
-                } else if (armState === 'forward') {
-                    ctx.fillRect(-2, -65, 20, 5); 
-                } else if (armState === 'slam') {
-                    ctx.fillRect(5, -60, 22, 6); 
-                } else if (this.hasBall) {
-                    ctx.fillRect(-3, -65, 15, 4);
-                    ctx.fillRect(8, -65, 4, 10); 
-                } else {
-                    ctx.fillRect(-8, -65, 4, 20);
-                }
+                ctx.save(); ctx.translate(this.x, this.y); ctx.scale(this.facing * 0.75, 0.75);
+                drawSpriteDummy(ctx, this.stats);
+                
+                if (this.stunTimer > 0) { ctx.fillStyle = '#f1c40f'; ctx.font = '10px "Press Start 2P"'; ctx.fillText("STUNNED", -20, -110); }
+                if (this.speedBoost > 0) { ctx.fillStyle = '#3498db'; ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI*2); ctx.globalAlpha = 0.3; ctx.fill(); ctx.globalAlpha = 1.0; }
                 ctx.restore();
+
+                if (this.isChargingShot) {
+                    ctx.save(); ctx.translate(this.x, this.y);
+                    const arcStart = Math.PI * 1.15, arcEnd = Math.PI * 1.85, totalArc = arcEnd - arcStart;
+                    const greenCenter = 80; let greenWidth = Math.max(4, (this.stats.shoot - 50) * 0.25);
+                    if (this.activeSkill === 'kobe') greenWidth = 30;
+                    if (Math.abs(this.x - this.targetHoop.x) > 400) greenWidth = 1; // Show tiny green window for half-court
+
+                    ctx.beginPath(); ctx.arc(-15, -45, 35, arcStart - 0.05, arcEnd + 0.05); ctx.strokeStyle = '#000'; ctx.lineWidth = 12; ctx.stroke();
+                    ctx.beginPath(); ctx.arc(-15, -45, 35, arcStart, arcEnd); ctx.strokeStyle = '#eee'; ctx.lineWidth = 8; ctx.stroke();
+                    ctx.beginPath(); ctx.arc(-15, -45, 35, arcStart + ((greenCenter - greenWidth/2)/100)*totalArc, arcStart + ((greenCenter + greenWidth/2)/100)*totalArc); ctx.strokeStyle = '#2ecc71'; ctx.lineWidth = 10; ctx.stroke();
+                    ctx.beginPath(); ctx.arc(-15, -45, 35, arcStart, arcStart + (this.meterValue/100)*totalArc); ctx.strokeStyle = '#3498db'; ctx.lineWidth = 4; ctx.stroke();
+                    ctx.restore();
+                }
             }
         }
 
         class Ball {
-            constructor() {
-                this.reset();
-                this.radius = 12; // Made ball larger
-                this.bounceLoss = 0.7;
-            }
-
-            reset() {
-                this.x = canvas.width / 2;
-                this.y = GROUND_Y - 15;
-                this.vx = 0;
-                this.vy = 0;
-                this.isHeld = false;
-                this.lastTouch = null;
-                this.scoringHoop = null;
-            }
-
+            constructor() { this.reset(); this.radius = 10; }
+            reset() { this.x = canvas.width/2; this.y = GROUND_Y-15; this.vx = 0; this.vy = 0; this.isHeld = false; this.lastTouch = null; this.scoringHoop = null; this.canScore = false; this.pointsWorth = 2; }
             update(p1, p2) {
                 if (this.isHeld) {
-                    const holder = p1.hasBall ? p1 : p2;
-                    this.x = holder.x + (15 * holder.facing);
-                    
-                    if (holder.animState === 'dunk' || holder.animState === 'shoot') {
-                        this.y = holder.y - 95; 
-                        this.x = holder.x + (5 * holder.facing);
-                    } else {
-                        this.y = holder.y - 55 + (Math.sin(Date.now() * 0.015) > 0 ? 5 : -5); 
-                    }
-                    this.vx = 0;
-                    this.vy = 0;
-                    return;
+                    const h = p1.hasBall ? p1 : p2;
+                    if (h.animState === 'dunk') { this.y = h.y - 75; this.x = h.x + (14 * h.facing); } 
+                    else if (h.animState === 'shoot' || h.isChargingShot) { this.y = h.y - 79; this.x = h.x + (2 * h.facing); } 
+                    else { this.y = h.y - 41 + (Math.sin(Date.now() * 0.015) > 0 ? 4 : -4); this.x = h.x + (11 * h.facing); }
+                    this.vx = 0; this.vy = 0; return;
                 }
-
                 if (this.scoringHoop) {
-                    this.x = this.scoringHoop.x; 
-                    this.vx = 0;
-                    this.vy += GRAVITY;
-                    this.y += this.vy;
-                    
-                    if (this.y > this.scoringHoop.y + 40) {
-                        if (this.lastTouch && this.lastTouch.targetHoop === this.scoringHoop) {
-                            this.lastTouch.score += 2;
-                            scoreAnimations.push(new ScoreAnim(this.scoringHoop.x, this.scoringHoop.y - 20, "+2 SCORE!", this.lastTouch === p1 ? "#3498db" : "#e74c3c"));
-                            checkWinCondition();
+                    this.x = this.scoringHoop.x; this.vx = 0; this.vy += GRAVITY; this.y += this.vy;
+                    if (this.y > this.scoringHoop.y + 45) {
+                        if (this.lastTouch && this.lastTouch.targetHoop === this.scoringHoop) { 
+                            this.lastTouch.score += this.pointsWorth; 
+                            if(this.pointsWorth === 3) scoreAnimations.push(new ScoreAnim(this.x, this.y - 120, "3 POINTS!", "#f1c40f"));
+                            checkWinCondition(); 
                         }
                         this.reset();
-                    }
-                    return; 
+                    } return; 
                 }
-
-                this.x += this.vx;
-                this.y += this.vy;
-                this.vy += GRAVITY;
-
-                if (this.x - this.radius <= 0) { this.x = this.radius; this.vx *= -this.bounceLoss; }
-                if (this.x + this.radius >= canvas.width) { this.x = canvas.width - this.radius; this.vx *= -this.bounceLoss; }
-                if (this.y - this.radius <= 0) { this.y = this.radius; this.vy *= -this.bounceLoss; }
-                if (this.y + this.radius >= GROUND_Y) {
-                    this.y = GROUND_Y - this.radius;
-                    this.vy *= -this.bounceLoss;
-                    this.vx *= 0.95; 
+                if (this.vy !== 0 && !this.isHeld) {
+                    [p1, p2].forEach(p => {
+                        if (p.animState === 'block' && p.grabCooldown === 0 && Math.hypot((p.x + 4*p.facing) - this.x, (p.y - 71) - this.y) < this.radius + 28) {
+                            p.hasBall = true; this.isHeld = true; this.lastTouch = p; this.canScore = false; p.stealCooldown = 30;
+                            scoreAnimations.push(new ScoreAnim(this.x, this.y - 15, "BLOCKED!", "#f1c40f"));
+                        }
+                    });
                 }
-
+                this.x += this.vx; this.y += this.vy; this.vy += GRAVITY;
+                if (this.x - this.radius <= 0) { this.x = this.radius; this.vx *= -0.6; }
+                if (this.x + this.radius >= canvas.width) { this.x = canvas.width - this.radius; this.vx *= -0.6; }
+                if (this.y - this.radius <= 0) { this.y = this.radius; this.vy *= -0.6; }
+                if (this.y + this.radius >= GROUND_Y) { this.y = GROUND_Y - this.radius; this.vy *= -0.3; this.vx *= 0.8; this.canScore = false; }
+                
                 [p1, p2].forEach(p => {
-                    if (!p.hasBall && Math.hypot(p.x - this.x, (p.y - 40) - this.y) < p.radius + this.radius + 15) {
-                        p.hasBall = true;
-                        this.isHeld = true;
-                        this.lastTouch = p;
+                    if (!p.hasBall && p.grabCooldown === 0 && Math.hypot(p.x - this.x, (p.y - 30) - this.y) < p.radius + this.radius + 15) {
+                        p.hasBall = true; this.isHeld = true; this.lastTouch = p; this.canScore = false; p.stealCooldown = 30; 
                     }
                 });
 
-                const hoops = [hoopLeft, hoopRight];
-                hoops.forEach(hoop => {
+                [hoopLeft, hoopRight].forEach(hoop => {
                     const bbX = hoop.dir === 1 ? hoop.x + 15 : hoop.x - 15;
+                    if (hoop.dir === 1 && this.x + this.radius >= bbX && this.y >= hoop.y - 60 && this.y <= hoop.y + 10) { this.x = bbX - this.radius; this.vx *= -0.7; } 
+                    else if (hoop.dir === -1 && this.x - this.radius <= bbX && this.y >= hoop.y - 60 && this.y <= hoop.y + 10) { this.x = bbX + this.radius; this.vx *= -0.7; }
                     
-                    // Backboard collision
-                    if (hoop.dir === 1 && this.x + this.radius >= bbX && this.y >= hoop.y - 60 && this.y <= hoop.y + 10) {
-                        this.x = bbX - this.radius;
-                        this.vx *= -0.8;
-                    } else if (hoop.dir === -1 && this.x - this.radius <= bbX && this.y >= hoop.y - 60 && this.y <= hoop.y + 10) {
-                        this.x = bbX + this.radius;
-                        this.vx *= -0.8;
-                    }
-
-                    const distToRim = Math.hypot(this.x - hoop.x, this.y - hoop.y);
-                    if (distToRim < hoop.rimRadius + this.radius) {
-                        if (Math.abs(this.x - hoop.x) < hoop.scoreRadius && this.vy > 0 && this.y >= hoop.y - 15 && this.y <= hoop.y + 5) {
-                            this.scoringHoop = hoop;
-                            this.vx = 0;
-                            this.vy = 2; 
-                        } else {
-                            this.vy *= -0.7;
-                            this.vx *= -0.7;
-                        }
+                    const dCX = Math.abs(this.x - hoop.x), dY = Math.abs(this.y - hoop.y);
+                    if (this.canScore && dCX <= hoop.scoreRadius && dY <= 15 && this.vy > 0) {
+                        this.scoringHoop = hoop; this.x = hoop.x; this.vx = 0; this.vy = Math.max(3, this.vy);
+                    } else if (dCX < hoop.rimRadius + 5 && dY < 12) {
+                        this.vy = -Math.abs(this.vy) * 0.4 - 0.5; this.vx = (this.x < hoop.x ? -2 : 2);
                     }
                 });
             }
-
             draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                
-                // Larger Ball Drawing
-                ctx.fillStyle = '#e67e22';
-                ctx.fillRect(-12, -8, 24, 16);
-                ctx.fillRect(-8, -12, 16, 24);
-                
-                ctx.fillStyle = '#000';
-                ctx.fillRect(-12, -1, 24, 2); 
-                ctx.fillRect(-1, -12, 2, 24); 
-                
+                ctx.save(); ctx.translate(this.x, this.y);
+                ctx.fillStyle = '#e67e22'; ctx.fillRect(-10, -6, 20, 12); ctx.fillRect(-6, -10, 12, 20);
+                ctx.fillStyle = '#000'; ctx.fillRect(-10, -1, 20, 2); ctx.fillRect(-1, -10, 2, 20); 
                 ctx.restore();
             }
         }
 
         let player1, player2, ball, gameActive = false;
-
         function startGame() {
             document.getElementById('selection-screen').style.display = 'none';
             document.getElementById('game-container').style.display = 'block';
             document.getElementById('controlsHint').style.display = 'flex';
-
             player1 = new Player(250, p1Legend, false);
             player2 = new Player(650, p2Legend, true);
             ball = new Ball();
-
-            updateScoreDisplay();
             gameActive = true;
             requestAnimationFrame(gameLoop);
         }
 
-        function updateScoreDisplay() {
+        function checkWinCondition() {
             document.getElementById('p1-score-display').innerText = `P1: ${player1.score}`;
             document.getElementById('p2-score-display').innerText = `P2: ${player2.score}`;
-        }
-
-        function checkWinCondition() {
-            updateScoreDisplay();
             if (player1.score >= 10 || player2.score >= 10) {
                 gameActive = false;
                 document.getElementById('win-screen').style.display = 'flex';
-                document.getElementById('win-text').innerText = player1.score >= 10 ? 'PLAYER 1 WINS!' : 'PLAYER 2 WINS!';
+                document.getElementById('win-text').innerText = player1.score >= 10 ? `${p1Legend.name} WINS!` : `${p2Legend.name} WINS!`;
                 document.getElementById('win-text').style.color = player1.score >= 10 ? '#3498db' : '#e74c3c';
             }
         }
 
-        function renderCourt() {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, 100);
-            
-            ctx.fillStyle = '#111';
-            ctx.fillRect(0, 100, canvas.width, 40);
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 22px Courier';
-            ctx.fillText('KONAMI', canvas.width / 2 - 40, 125);
+        // --- ENVIRONMENT RENDERING ---
+        const crowdCanvas = document.createElement('canvas');
+        crowdCanvas.width = 900; crowdCanvas.height = 180; const cCtx = crowdCanvas.getContext('2d');
+        cCtx.fillStyle = '#111'; cCtx.fillRect(0,0,900,180);
+        function drawFan(cx, cy, scale) {
+            const skinColors = ['#ffcc99', '#d2b48c', '#8b4513', '#a0522d', '#f1c27d'], hairColors = ['#000', '#8b4513', '#f1c40f', '#555', '#7f8c8d'], clothesColors = ['#c0392b', '#2980b9', '#27ae60', '#f39c12', '#8e44ad', '#7f8c8d', '#2c3e50'];
+            const skin = skinColors[Math.floor(Math.random()*skinColors.length)], hair = hairColors[Math.floor(Math.random()*hairColors.length)], jacket = clothesColors[Math.floor(Math.random()*clothesColors.length)], shirt = clothesColors[Math.floor(Math.random()*clothesColors.length)];
+            cCtx.fillStyle = shirt; cCtx.fillRect(cx - 3*scale, cy, 6*scale, 8*scale); cCtx.fillStyle = jacket; cCtx.fillRect(cx - 5*scale, cy, 3*scale, 8*scale); cCtx.fillRect(cx + 2*scale, cy, 3*scale, 8*scale);
+            cCtx.fillStyle = skin; cCtx.fillRect(cx - 3*scale, cy - 6*scale, 6*scale, 6*scale); cCtx.fillStyle = hair; cCtx.fillRect(cx - 4*scale, cy - 8*scale, 8*scale, 3*scale); cCtx.fillRect(cx - 4*scale, cy - 5*scale, 2*scale, 2*scale); cCtx.fillRect(cx + 2*scale, cy - 5*scale, 2*scale, 2*scale);
+        }
+        for (let row = 0; row < 6; row++) { const yPos = 20 + (row * 24); const xOffset = (row % 2 === 0) ? 0 : 15; for (let col = -1; col < 32; col++) drawFan(col * 30 + xOffset, yPos, 2.5); }
+        cCtx.fillStyle = '#7f8c8d'; cCtx.fillRect(0, 150, 900, 30); cCtx.fillStyle = '#95a5a6'; cCtx.fillRect(0, 145, 900, 5); 
+        for (let i = 0; i < 900; i+= 60) { cCtx.fillStyle = '#bdc3c7'; cCtx.fillRect(i, 140, 4, 10); cCtx.fillStyle = '#34495e'; cCtx.fillRect(i + 28, 155, 4, 20); }
 
-            ctx.fillStyle = '#1c289c'; 
-            ctx.fillRect(0, 140, canvas.width, 40);
-
-            ctx.fillStyle = '#e4a552'; 
-            ctx.fillRect(0, 180, canvas.width, canvas.height - 180);
-
-            ctx.fillStyle = '#d39341';
-            for(let y = 180; y < canvas.height; y += 15) {
-                ctx.fillRect(0, y, canvas.width, 2);
-            }
-
-            ctx.fillStyle = '#1c289c'; 
-            ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
-
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(canvas.width / 2 - 3, 180, 6, canvas.height - 180);
-
-            ctx.beginPath();
-            ctx.arc(canvas.width / 2, GROUND_Y, 70, 0, Math.PI * 2);
-            ctx.fillStyle = '#1c289c';
-            ctx.fill();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = '#fff';
-            ctx.stroke();
-
-            ctx.fillStyle = '#1c289c';
-            ctx.fillRect(0, GROUND_Y - 90, 180, 180);
-            ctx.strokeRect(0, GROUND_Y - 90, 180, 180);
-            
-            ctx.beginPath();
-            ctx.arc(180, GROUND_Y, 50, -Math.PI/2, Math.PI/2);
-            ctx.stroke();
-
-            ctx.fillStyle = '#1c289c';
-            ctx.fillRect(canvas.width - 180, GROUND_Y - 90, 180, 180);
-            ctx.strokeRect(canvas.width - 180, GROUND_Y - 90, 180, 180);
-
-            ctx.beginPath();
-            ctx.arc(canvas.width - 180, GROUND_Y, 50, Math.PI/2, -Math.PI/2);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.arc(0, GROUND_Y, 280, -Math.PI/4, Math.PI/4);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.arc(canvas.width, GROUND_Y, 280, Math.PI - Math.PI/4, Math.PI + Math.PI/4);
-            ctx.stroke();
+        function renderEnvironment() {
+            ctx.drawImage(crowdCanvas, 0, 0);
+            ctx.fillStyle = '#e4a552'; ctx.fillRect(0, 180, canvas.width, canvas.height - 180);
+            ctx.fillStyle = '#d39341'; for(let y = 180; y < canvas.height; y += 15) ctx.fillRect(0, y, canvas.width, 2);
+            ctx.fillStyle = '#1c289c'; ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+            ctx.fillStyle = '#fff'; ctx.fillRect(canvas.width / 2 - 3, 180, 6, canvas.height - 180);
+            ctx.beginPath(); ctx.ellipse(canvas.width / 2, GROUND_Y, 70, 20, 0, 0, Math.PI * 2); ctx.fillStyle = '#1c289c'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.stroke();
+            ctx.fillStyle = '#1c289c'; ctx.fillRect(0, GROUND_Y - 40, 180, 80); ctx.strokeRect(0, GROUND_Y - 40, 180, 80);
+            ctx.beginPath(); ctx.ellipse(180, GROUND_Y, 30, 40, 0, -Math.PI/2, Math.PI/2); ctx.stroke();
+            ctx.fillStyle = '#1c289c'; ctx.fillRect(canvas.width - 180, GROUND_Y - 40, 180, 80); ctx.strokeRect(canvas.width - 180, GROUND_Y - 40, 180, 80);
+            ctx.beginPath(); ctx.ellipse(canvas.width - 180, GROUND_Y, 30, 40, 0, Math.PI/2, -Math.PI/2); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(0, GROUND_Y, 280, 80, 0, -Math.PI/2, Math.PI/2); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(canvas.width, GROUND_Y, 280, 80, 0, Math.PI/2, -Math.PI/2); ctx.stroke();
         }
 
-        function drawSingleHoop(hoop) {
-            ctx.save();
-            ctx.translate(hoop.x, hoop.y);
-            
-            // Using scaling fixes all pixel alignment for the left side instantly
-            ctx.scale(hoop.dir, 1);
-            
-            // Post / Support (L-Shape)
-            ctx.fillStyle = '#5c637a';
-            ctx.fillRect(30, -30, 8, GROUND_Y - hoop.y + 30);
-            ctx.fillRect(20, -30, 10, 8); 
-            
-            // Backboard
-            ctx.fillStyle = '#c5cbe1';
-            ctx.fillRect(-15, -60, 40, 50);
-            
-            // Orange Square
-            ctx.strokeStyle = '#e67e22';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(-5, -50, 20, 25);
-            
-            // Rim
-            ctx.fillStyle = '#8b93a8';
-            ctx.fillRect(-18, 0, 36, 4);
-            
-            // Net (Pixel checkboard pattern)
+        function drawHoop(hoop) {
+            ctx.save(); ctx.translate(hoop.x, hoop.y); ctx.scale(hoop.dir, 1);
+            ctx.fillStyle = '#5c637a'; ctx.fillRect(30, -30, 8, GROUND_Y - hoop.y + 30); ctx.fillRect(20, -30, 10, 8); 
+            ctx.fillStyle = '#c5cbe1'; ctx.fillRect(-15, -60, 40, 50);
+            ctx.strokeStyle = '#e67e22'; ctx.lineWidth = 3; ctx.strokeRect(-5, -50, 20, 25);
+            ctx.fillStyle = '#e74c3c'; ctx.fillRect(-18, 0, 36, 5);
             ctx.fillStyle = '#d1d5e6';
-            
-            // Row 1
-            ctx.fillRect(-14, 4, 4, 4); ctx.fillRect(-6, 4, 4, 4); 
-            ctx.fillRect(2, 4, 4, 4); ctx.fillRect(10, 4, 4, 4);
-            // Row 2
-            ctx.fillRect(-10, 8, 4, 4); ctx.fillRect(-2, 8, 4, 4); 
-            ctx.fillRect(6, 8, 4, 4);
-            // Row 3
-            ctx.fillRect(-14, 12, 4, 4); ctx.fillRect(-6, 12, 4, 4); 
-            ctx.fillRect(2, 12, 4, 4); ctx.fillRect(10, 12, 4, 4);
-            // Row 4
-            ctx.fillRect(-10, 16, 4, 4); ctx.fillRect(-2, 16, 4, 4); 
-            ctx.fillRect(6, 16, 4, 4);
-
+            for(let i=0; i<4; i++) { ctx.fillRect(-14 + (i*8), 5, 4, 4); ctx.fillRect(-10 + (i*8), 9, 4, 4); ctx.fillRect(-14 + (i*8), 13, 4, 4); ctx.fillRect(-10 + (i*8), 17, 4, 4); }
             ctx.restore();
         }
 
-        function renderHoops() {
-            drawSingleHoop(hoopRight);
-            drawSingleHoop(hoopLeft);
+        function syncState(state) {
+            Object.assign(player1, state.p1); Object.assign(player2, state.p2); Object.assign(ball, state.ball);
+            player1.score = state.score.p1; player2.score = state.score.p2;
+            document.getElementById('p1-score-display').innerText = `P1: ${player1.score}`;
+            document.getElementById('p2-score-display').innerText = `P2: ${player2.score}`;
+        }
+        function getStrippedState() {
+            return {
+                p1: {x: player1.x, y: player1.y, vx: player1.vx, vy: player1.vy, hasBall: player1.hasBall, animState: player1.animState, isChargingShot: player1.isChargingShot, meterValue: player1.meterValue, isDunking: player1.isDunking, facing: player1.facing, stunTimer: player1.stunTimer, speedBoost: player1.speedBoost},
+                p2: {x: player2.x, y: player2.y, vx: player2.vx, vy: player2.vx, hasBall: player2.hasBall, animState: player2.animState, isChargingShot: player2.isChargingShot, meterValue: player2.meterValue, isDunking: player2.isDunking, facing: player2.facing, stunTimer: player2.stunTimer, speedBoost: player2.speedBoost},
+                ball: {x: ball.x, y: ball.y, isHeld: ball.isHeld, scoringHoop: ball.scoringHoop ? {id: ball.scoringHoop.id} : null},
+                score: {p1: player1.score, p2: player2.score}
+            };
         }
 
         function gameLoop() {
             if (!gameActive) return;
-
-            player1.update(ball, player2);
-            player2.update(ball, player1);
-            ball.update(player1, player2);
-
+            if (isHost) {
+                player1.update(ball, player2, p1Keys); player2.update(ball, player1, p2Keys); ball.update(player1, player2);
+                if (isMultiplayer && conn && conn.open) conn.send({ type: 'state', state: getStrippedState() });
+            } else {
+                if (player1.animState === 'walk') player1.animTimer += 0.3; if (player2.animState === 'walk') player2.animTimer += 0.3;
+            }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            renderCourt();
-            renderHoops();
-
-            player1.draw();
-            player2.draw();
-            ball.draw();
-
+            renderEnvironment(); drawHoop(hoopRight); drawHoop(hoopLeft);
+            player1.draw(); player2.draw(); ball.draw();
             for (let i = scoreAnimations.length - 1; i >= 0; i--) {
-                const anim = scoreAnimations[i];
-                anim.update();
-                anim.draw();
+                const anim = scoreAnimations[i]; anim.update(); anim.draw();
                 if (anim.timer > 60) scoreAnimations.splice(i, 1);
             }
-
             requestAnimationFrame(gameLoop);
         }
     </script>
